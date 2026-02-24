@@ -4,7 +4,12 @@ import subprocess
 from pdf2docx import Converter
 from docx import Document
 from PIL import Image
-import img2pdf
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.units import inch
+from reportlab.pdfgen import canvas
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+from reportlab.lib.enums import TA_LEFT
 
 def convert_file(input_path, target_format, output_folder):
     """
@@ -144,123 +149,77 @@ def convert_pdf_to_docx(input_path, output_path):
 
 
 def convert_docx_to_pdf(input_path, output_path):
-    """Convert DOCX to PDF using simple image-based approach"""
+    """Convert DOCX to PDF using reportlab"""
     doc = Document(input_path)
     
-    # Extract text and create pages
-    pages = []
-    current_page = []
-    line_count = 0
-    lines_per_page = 40
+    # Create PDF using reportlab
+    c = canvas.Canvas(output_path, pagesize=letter)
+    width, height = letter
     
+    # Extract text from paragraphs
+    text_lines = []
     for para in doc.paragraphs:
         text = para.text.strip()
         if text:
-            current_page.append(text)
-            line_count += 1
-            if line_count >= lines_per_page:
-                pages.append(current_page)
-                current_page = []
-                line_count = 0
+            text_lines.append(text)
     
-    if current_page:
-        pages.append(current_page)
+    if not text_lines:
+        text_lines = ["(Empty document)"]
     
-    if not pages:
-        pages = [["(Empty document)"]]
+    # Write text to PDF (simple single-page approach for demo)
+    # For multi-page, we'd need more complex logic
+    y_position = height - 1 * inch
     
-    # Create PDF pages as images
-    from PIL import Image, ImageDraw, ImageFont
-    width, height = 800, 1100
+    c.setFont("Helvetica", 12)
     
-    images = []
-    for page_num, page_text in enumerate(pages):
-        img = Image.new('RGB', (width, height), 'white')
-        draw = ImageDraw.Draw(img)
+    for line in text_lines:
+        if y_position < 1 * inch:
+            # Start new page if needed
+            c.showPage()
+            c.setFont("Helvetica", 12)
+            y_position = height - 1 * inch
         
-        try:
-            font = ImageFont.truetype("arial.ttf", 18)
-            title_font = ImageFont.truetype("arial.ttf", 24)
-        except:
-            font = ImageFont.load_default()
-            title_font = font
+        # Wrap long lines
+        max_chars = 80
+        while len(line) > max_chars:
+            c.drawString(1 * inch, y_position, line[:max_chars])
+            line = line[max_chars:]
+            y_position -= 0.2 * inch
         
-        # Draw title
-        draw.text((30, 30), f"Page {page_num + 1}", fill='black', font=title_font)
-        
-        y = 80
-        for line in page_text[:lines_per_page]:
-            if y < height - 40:
-                draw.text((30, y), line[:100], fill='black', font=font)
-                y += 25
-        
-        images.append(img)
+        c.drawString(1 * inch, y_position, line)
+        y_position -= 0.2 * inch
     
-    # Save first page as PDF (multi-page PDF is complex without reportlab)
-    if images:
-        # Save as PDF using img2pdf
-        img_path = output_path.replace('.pdf', '_temp.png')
-        images[0].save(img_path, 'PNG')
-        
-        with open(output_path, "wb") as f:
-            f.write(img2pdf.convert(img_path))
-        
-        import os
-        if os.path.exists(img_path):
-            os.remove(img_path)
+    c.save()
 
 
 def convert_txt_to_pdf(input_path, output_path):
-    """Convert TXT to PDF using img2pdf"""
+    """Convert TXT to PDF using reportlab"""
     with open(input_path, 'r', encoding='utf-8') as f:
-        lines = f.readlines()
+        content = f.read()
     
-    # Create image with text
-    from PIL import Image, ImageDraw, ImageFont
+    # Create PDF using reportlab
+    c = canvas.Canvas(output_path, pagesize=letter)
+    width, height = letter
     
-    line_height = 25
-    lines_per_page = 45
-    width = 800
+    # Split content into lines
+    lines = content.split('\n')
     
-    # Calculate number of pages
-    num_pages = (len(lines) + lines_per_page - 1) // lines_per_page
-    if num_pages == 0:
-        num_pages = 1
+    y_position = height - 1 * inch
+    c.setFont("Helvetica", 12)
     
-    images = []
-    for page_num in range(num_pages):
-        start_idx = page_num * lines_per_page
-        end_idx = min(start_idx + lines_per_page, len(lines))
-        page_lines = lines[start_idx:end_idx]
+    for line in lines:
+        if y_position < 1 * inch:
+            c.showPage()
+            c.setFont("Helvetica", 12)
+            y_position = height - 1 * inch
         
-        height = max(600, len(page_lines) * line_height + 100)
-        img = Image.new('RGB', (width, height), 'white')
-        draw = ImageDraw.Draw(img)
-        
-        try:
-            font = ImageFont.truetype("arial.ttf", 16)
-        except:
-            font = ImageFont.load_default()
-        
-        y = 30
-        for line in page_lines:
-            text = line.rstrip()[:100]
-            draw.text((30, y), text, fill='black', font=font)
-            y += line_height
-        
-        images.append(img)
+        # Wrap long lines
+        max_chars = 80
+        wrapped_line = line[:max_chars]
+        c.drawString(1 * inch, y_position, wrapped_line)
+        y_position -= 0.2 * inch
     
-    # Save first page as PDF
-    if images:
-        img_path = output_path.replace('.pdf', '_temp.png')
-        images[0].save(img_path, 'PNG')
-        
-        with open(output_path, "wb") as f:
-            f.write(img2pdf.convert(img_path))
-        
-        import os
-        if os.path.exists(img_path):
-            os.remove(img_path)
+    c.save()
 
 
 def convert_docx_to_txt(input_path, output_path):
