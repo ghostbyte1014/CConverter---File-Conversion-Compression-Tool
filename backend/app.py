@@ -117,13 +117,8 @@ def convert_file_endpoint():
     input_ext = input_path.rsplit('.', 1)[1].lower()
     
     try:
-        # Handle audio/video conversion via free API
-        if input_ext in ['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac', 'wma',
-                        'mp4', 'avi', 'mov', 'mkv', 'webm', 'wmv', 'flv']:
-            output_path = convert_with_ffmpeg(input_path, target_format, OUTPUT_FOLDER)
-        else:
-            # Local conversion for documents and images
-            output_path = convert_file(input_path, target_format, OUTPUT_FOLDER)
+        # Use converter for all file types (includes proper audio/video handling)
+        output_path = convert_file(input_path, target_format, OUTPUT_FOLDER)
         
         session['output_path'] = output_path
         session['target_format'] = target_format
@@ -137,28 +132,6 @@ def convert_file_endpoint():
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
-def convert_with_ffmpeg(input_path, target_format, output_folder):
-    """Convert audio/video using ffmpeg"""
-    import uuid
-    import shutil
-    import subprocess
-    
-    output_filename = f"{uuid.uuid4()}.{target_format}"
-    output_path = os.path.join(output_folder, output_filename)
-    
-    # Try ffmpeg conversion
-    try:
-        result = subprocess.run([
-            'ffmpeg', '-i', input_path, 
-            '-y', '-progress', 'pipe:1', output_path
-        ], check=True, capture_output=True, text=True)
-        return output_path
-    except Exception as e:
-        print(f"FFmpeg conversion failed: {e}")
-        # Fallback: copy file with new extension
-        shutil.copy(input_path, output_path)
-        return output_path
 
 @app.route('/api/compress', methods=['POST'])
 def compress_file_endpoint():
