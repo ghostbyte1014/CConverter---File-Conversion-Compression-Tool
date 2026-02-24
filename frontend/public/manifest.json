@@ -1,0 +1,17 @@
+{
+  "name": "MConverter",
+  "short_name": "MConverter",
+  "description": "File conversion, image compression, and background removal tool",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#4F46E5",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

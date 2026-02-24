@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: cconverter-backend
+    env: python
+    region: oregon
+    buildCommand: pip install -r requirements.txt
+    startCommand: python app.py
+    envVars:
+      - key: MAX_CONTENT_LENGTH
+        value: "262144000"
+      - key: FLASK_ENV
+        value: production
