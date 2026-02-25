@@ -21,21 +21,17 @@ def compress_image(input_path, quality, output_folder):
     with Image.open(input_path) as img:
         # Handle different image modes
         if img.mode in ('RGBA', 'LA', 'P') and input_ext in ['jpg', 'jpeg']:
-            # Convert RGBA to RGB for JPEG
-            rgb_img = Image.new('RGB', img.size, (255, 255, 255))
+            # Convert palette mode to RGBA first, then to RGB for JPEG
             if img.mode == 'P':
                 img = img.convert('RGBA')
+            # Now handle RGBA/LA to RGB conversion
             if img.mode in ('RGBA', 'LA'):
+                rgb_img = Image.new('RGB', img.size, (255, 255, 255))
                 rgb_img.paste(img, mask=img.split()[-1])
                 img = rgb_img
         
         # Get original size
         original_size = os.path.getsize(input_path)
-        
-        # Determine optimization based on quality
-        if quality < 50:
-            # Low quality - aggressive compression
-            img = img.convert('P', palette=Image.ADAPTIVE, colors=128)
         
         # Save with compression
         save_kwargs = {
@@ -51,9 +47,12 @@ def compress_image(input_path, quality, output_folder):
             else:
                 save_kwargs['compress_level'] = 6
         elif input_ext in ['jpg', 'jpeg']:
-            # JPEG optimization
+            # JPEG optimization - ensure RGB mode
             save_kwargs['optimize'] = True
             save_kwargs['subsampling'] = '4:2:0'
+            # Convert to RGB if not already (handles P mode from quality < 50)
+            if img.mode != 'RGB':
+                img = img.convert('RGB')
         
         img.save(output_path, **save_kwargs)
         

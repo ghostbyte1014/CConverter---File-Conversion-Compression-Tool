@@ -76,15 +76,22 @@ def convert_file(input_path, target_format, output_folder):
 def convert_image(input_path, output_path, target_format):
     """Convert between image formats"""
     with Image.open(input_path) as img:
+        # Handle palette mode (P) and transparency for JPEG
         if target_format in ['jpg', 'jpeg'] and img.mode in ('RGBA', 'LA', 'P'):
-            # Convert palette mode to RGBA first, then to RGB for JPEG
+            # Convert palette mode to RGBA first
             if img.mode == 'P':
                 img = img.convert('RGBA')
-            # Now handle RGBA/LA to RGB conversion
+            # Then create RGB with white background
             if img.mode in ('RGBA', 'LA'):
                 rgb_img = Image.new('RGB', img.size, (255, 255, 255))
                 rgb_img.paste(img, mask=img.split()[-1])
                 img = rgb_img
+        
+        # For PNG to JPEG, also handle transparency
+        if target_format in ['jpg', 'jpeg'] and img.mode == 'RGBA':
+            rgb_img = Image.new('RGB', img.size, (255, 255, 255))
+            rgb_img.paste(img, mask=img.split()[-1])
+            img = rgb_img
         
         save_kwargs = {}
         if target_format == 'webp':
@@ -92,6 +99,10 @@ def convert_image(input_path, output_path, target_format):
         elif target_format == 'jpeg':
             save_kwargs['quality'] = 95
             save_kwargs['optimize'] = True
+        
+        # Ensure mode is correct for the target format
+        if target_format in ['jpg', 'jpeg'] and img.mode != 'RGB':
+            img = img.convert('RGB')
         
         img.save(output_path, **save_kwargs)
 
